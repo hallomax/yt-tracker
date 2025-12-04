@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>YT Tracker</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Neue YouTube-Videos von deinen Lieblingskanälen tracken">
+    <meta name="theme-color" content="#ff3d5a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="YT Tracker">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Clean Header -->
+        <header class="top-bar">
+            <button id="menuBtn" class="btn-icon" title="Menü">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="12" x2="21" y2="12"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+            </button>
+            
+            <div class="title-group">
+                <h1>Neue Videos</h1>
+                <span id="videoCount" class="video-count">0</span>
+            </div>
+
+            <div class="header-actions">
+                <button id="filterBtn" class="btn-icon" title="Filter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                    </svg>
+                </button>
+                <button id="refreshBtn" class="btn-icon" title="Aktualisieren">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Pull to Refresh Indicator -->
+        <div id="pullIndicator" class="pull-indicator">
+            <svg class="pull-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <div id="videoGrid" class="video-grid"></div>
+
+            <div id="emptyState" class="empty-state">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M10 8l6 4-6 4V8z"/>
+                    </svg>
+                </div>
+                <p>Keine neuen Videos</p>
+            </div>
+
+            <div id="loadingState" class="loading-state hidden">
+                <div class="loader"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div id="sidebarOverlay" class="sidebar-overlay hidden"></div>
+    
+    <!-- Sidebar Menu -->
+    <aside id="sidebar" class="sidebar hidden">
+        <div class="sidebar-header">
+            <h2>Kanäle</h2>
+            <button id="closeSidebar" class="btn-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="channels-section">
+            <ul id="channelList" class="channel-list"></ul>
+        </div>
+
+        <div class="sidebar-footer">
+            <button id="addChannelBtn" class="btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Kanal hinzufügen
+            </button>
+        </div>
+    </aside>
+
+    <!-- Modal: Kanal hinzufügen/bearbeiten -->
+    <div id="channelModal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Kanal hinzufügen</h2>
+                <button class="btn-icon modal-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="channelInput">Kanal-URL oder Handle</label>
+                    <input type="text" id="channelInput" placeholder="z.B. @LinusTechTips">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelChannel" class="btn-secondary">Abbrechen</button>
+                <button id="saveChannel" class="btn-primary">Hinzufügen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Filter -->
+    <div id="filterModal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Filter</h2>
+                <button class="btn-icon filter-modal-close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="startDate">Videos ab Datum</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="filter-actions">
+                    <button id="resetToToday" class="btn-secondary">Ab heute</button>
+                    <button id="clearDateFilter" class="btn-ghost">Alle zeigen</button>
+                </div>
+                <div id="filterInfo" class="filter-info"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="markAllSeenBtn" class="btn-ghost">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Alle als gesehen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
