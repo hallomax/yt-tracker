@@ -366,11 +366,20 @@ function renderChannelGrid() {
         const count = unseenByChannel[channel.id] || 0;
         const initial = channel.name.charAt(0).toUpperCase();
         
+        // Try to get thumbnail from channel, or fallback to video's channelThumbnail
+        let thumbnail = channel.thumbnail;
+        if (!thumbnail) {
+            const channelVideo = state.videos.find(v => v.channelId === channel.id && v.channelThumbnail);
+            if (channelVideo) {
+                thumbnail = channelVideo.channelThumbnail;
+            }
+        }
+        
         return `
             <div class="channel-grid-item" onclick="showChannelVideos('${channel.id}')" style="animation-delay: ${index * 50}ms">
                 <div class="channel-grid-avatar">
-                    ${channel.thumbnail 
-                        ? `<img src="${channel.thumbnail}" alt="${escapeHtml(channel.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    ${thumbnail 
+                        ? `<img src="${thumbnail}" alt="${escapeHtml(channel.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                            <div class="avatar-placeholder" style="display:none">${initial}</div>`
                         : `<div class="avatar-placeholder">${initial}</div>`
                     }
