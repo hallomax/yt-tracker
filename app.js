@@ -32,7 +32,8 @@ const STORAGE_KEYS = {
     CHANNELS: 'yt_tracker_channels',
     SEEN_VIDEOS: 'yt_tracker_seen_videos',
     VIDEOS_CACHE: 'yt_tracker_videos_cache',
-    START_DATE: 'yt_tracker_start_date'
+    START_DATE: 'yt_tracker_start_date',
+    VIEW_MODE: 'yt_tracker_view_mode'
 };
 
 // ===========================
@@ -133,12 +134,19 @@ function loadState() {
         DOM.startDateInput.value = state.startDate;
     }
     updateFilterInfo();
+    
+    // Load View Mode
+    const savedViewMode = localStorage.getItem(STORAGE_KEYS.VIEW_MODE);
+    if (savedViewMode === 'channels' || savedViewMode === 'videos') {
+        state.viewMode = savedViewMode;
+    }
 }
 
 function saveState() {
     localStorage.setItem(STORAGE_KEYS.CHANNELS, JSON.stringify(state.channels));
     localStorage.setItem(STORAGE_KEYS.SEEN_VIDEOS, JSON.stringify([...state.seenVideos]));
     localStorage.setItem(STORAGE_KEYS.VIDEOS_CACHE, JSON.stringify(state.videos));
+    localStorage.setItem(STORAGE_KEYS.VIEW_MODE, state.viewMode);
 }
 
 // ===========================
@@ -269,12 +277,14 @@ function toggleViewMode() {
     if (state.filteredChannelId) {
         state.filteredChannelId = null;
         state.viewMode = 'channels';
+        saveState();
         updateView();
         return;
     }
     
     // Toggle between views
     state.viewMode = state.viewMode === 'videos' ? 'channels' : 'videos';
+    saveState();
     updateView();
 }
 
@@ -397,6 +407,7 @@ function showChannelVideos(channelId) {
 function goBackToChannels() {
     state.filteredChannelId = null;
     state.viewMode = 'channels';
+    saveState();
     updateView();
 }
 
