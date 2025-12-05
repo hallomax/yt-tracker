@@ -304,7 +304,7 @@ function updateView() {
         DOM.viewIcon.innerHTML = `
             <polyline points="15 18 9 12 15 6"/>
         `;
-        DOM.viewToggleBtn.classList.add('active');
+        DOM.viewToggleBtn.classList.remove('active');
         DOM.viewToggleBtn.title = 'Zurück zu Kanälen';
     } else if (isChannelView) {
         // Show list/video icon when in channel view
@@ -313,7 +313,7 @@ function updateView() {
             <rect x="3" y="9" width="18" height="4" rx="1"/>
             <rect x="3" y="15" width="18" height="4" rx="1"/>
         `;
-        DOM.viewToggleBtn.classList.add('active');
+        DOM.viewToggleBtn.classList.remove('active');
         DOM.viewToggleBtn.title = 'Video-Ansicht';
     } else {
         // Show grid icon when in video view
