@@ -113,7 +113,7 @@
                 </svg>
                 Kanal hinzufügen
             </button>
-            <button id="installBtn" class="btn-install hidden">
+            <button id="installBtn" class="btn-install">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="7 10 12 15 17 10"/>
@@ -202,39 +202,46 @@
         }
         
         // PWA Install Button
-        let deferredPrompt;
+        let deferredPrompt = null;
         const installBtn = document.getElementById('installBtn');
+        
+        // Check if already installed (standalone mode)
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            if (installBtn) installBtn.style.display = 'none';
+        }
         
         window.addEventListener('beforeinstallprompt', (e) => {
             console.log('beforeinstallprompt fired!');
             e.preventDefault();
             deferredPrompt = e;
-            // Show install button
-            if (installBtn) {
-                installBtn.classList.remove('hidden');
-            }
         });
         
         if (installBtn) {
             installBtn.addEventListener('click', async () => {
-                if (!deferredPrompt) {
+                if (deferredPrompt) {
+                    // Native install prompt
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log('Install outcome:', outcome);
+                    if (outcome === 'accepted') {
+                        installBtn.style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                } else {
                     // Fallback: Show manual instructions
-                    alert('Tippe auf das Menü deines Browsers (⋮) und wähle "App installieren" oder "Zum Startbildschirm hinzufügen"');
-                    return;
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                    if (isIOS) {
+                        alert('📱 iOS Installation:\n\n1. Tippe auf das Teilen-Symbol (📤)\n2. Scrolle runter\n3. Tippe "Zum Home-Bildschirm"');
+                    } else {
+                        alert('📱 Installation:\n\n1. Tippe auf das Browser-Menü (⋮)\n2. Wähle "App installieren" oder "Zum Startbildschirm hinzufügen"');
+                    }
                 }
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                console.log('Install outcome:', outcome);
-                deferredPrompt = null;
-                installBtn.classList.add('hidden');
             });
         }
         
         window.addEventListener('appinstalled', () => {
             console.log('App installed!');
-            if (installBtn) {
-                installBtn.classList.add('hidden');
-            }
+            if (installBtn) installBtn.style.display = 'none';
             deferredPrompt = null;
         });
     </script>
