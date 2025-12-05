@@ -246,6 +246,10 @@ body {
     padding: 0 16px;
 }
 
+.video-grid.hidden {
+    display: none;
+}
+
 /* ===========================
    Video Card - Clean
    =========================== */
@@ -888,11 +892,204 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ===========================
+   Channel Grid View (Kanal-Ansicht)
+   =========================== */
+.channel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 24px;
+    padding: 16px;
+    justify-items: center;
+}
+
+.channel-grid.hidden {
+    display: none;
+}
+
+.channel-grid-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform var(--transition);
+    animation: fadeIn 0.3s ease forwards;
+    opacity: 0;
+}
+
+.channel-grid-item:hover {
+    transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+    to { opacity: 1; }
+}
+
+.channel-grid-avatar {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.channel-grid-avatar img,
+.channel-grid-avatar .avatar-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--accent);
+    box-shadow: 0 4px 20px var(--accent-glow);
+    transition: all var(--transition);
+}
+
+.channel-grid-avatar .avatar-placeholder {
+    background: linear-gradient(135deg, var(--accent), #ff6b81);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: white;
+}
+
+.channel-grid-item:hover .channel-grid-avatar img,
+.channel-grid-item:hover .channel-grid-avatar .avatar-placeholder {
+    border-color: #fff;
+    box-shadow: 0 6px 30px var(--accent-glow), 0 0 0 4px var(--accent-glow);
+}
+
+.channel-grid-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 6px;
+    background: var(--accent);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-primary);
+    box-shadow: 0 2px 8px rgba(255, 61, 90, 0.4);
+}
+
+.channel-grid-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Back button for filtered view */
+.back-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    margin: 0 16px 16px;
+}
+
+.back-header.hidden {
+    display: none;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-family: var(--font-main);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.back-btn:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+}
+
+.back-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.back-channel-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.back-channel-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.back-channel-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.back-channel-name {
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+/* View toggle active state */
+.btn-icon.active {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* ===========================
    Responsive
    =========================== */
 @media (max-width: 600px) {
     .video-grid {
         grid-template-columns: 1fr;
+    }
+    
+    .channel-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+    
+    .channel-grid-avatar {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .channel-grid-badge {
+        min-width: 22px;
+        height: 22px;
+        font-size: 0.7rem;
     }
     
     .sidebar {

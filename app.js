@@ -44,7 +44,9 @@ let state = {
     videos: [],
     editingChannelId: null,
     currentPipedInstance: 0,
-    startDate: null // Filter: nur Videos ab diesem Datum anzeigen
+    startDate: null, // Filter: nur Videos ab diesem Datum anzeigen
+    viewMode: 'videos', // 'videos' or 'channels'
+    filteredChannelId: null // When viewing videos of a specific channel
 };
 
 // ===========================
@@ -64,7 +66,11 @@ const DOM = {
     // Videos
     mainContent: document.getElementById('mainContent'),
     videoGrid: document.getElementById('videoGrid'),
+    channelGrid: document.getElementById('channelGrid'),
     videoCount: document.getElementById('videoCount'),
+    viewTitle: document.getElementById('viewTitle'),
+    viewToggleBtn: document.getElementById('viewToggleBtn'),
+    viewIcon: document.getElementById('viewIcon'),
     refreshBtn: document.getElementById('refreshBtn'),
     markAllSeenBtn: document.getElementById('markAllSeenBtn'),
     emptyState: document.getElementById('emptyState'),
@@ -99,7 +105,7 @@ function init() {
     loadState();
     setupEventListeners();
     renderChannels();
-    renderVideos();
+    updateView(); // This will render the correct view based on state.viewMode
 }
 
 function loadState() {
@@ -150,6 +156,7 @@ function setupEventListeners() {
     // Videos
     DOM.refreshBtn.addEventListener('click', refreshVideos);
     DOM.markAllSeenBtn.addEventListener('click', markAllAsSeen);
+    DOM.viewToggleBtn.addEventListener('click', toggleViewMode);
     
     // Filter Modal
     DOM.filterBtn.addEventListener('click', openFilterModal);
@@ -249,6 +256,142 @@ function openFilterModal() {
 
 function closeFilterModal() {
     DOM.filterModal.classList.add('hidden');
+}
+
+// ===========================
+// View Toggle Functions
+// ===========================
+function toggleViewMode() {
+    // If we're viewing a filtered channel's videos, go back to channel view
+    if (state.filteredChannelId) {
+        state.filteredChannelId = null;
+        state.viewMode = 'channels';
+        updateView();
+        return;
+    }
+    
+    // Toggle between views
+    state.viewMode = state.viewMode === 'videos' ? 'channels' : 'videos';
+    updateView();
+}
+
+function updateView() {
+    const isChannelView = state.viewMode === 'channels' && !state.filteredChannelId;
+    
+    // Update title
+    if (state.filteredChannelId) {
+        DOM.viewTitle.textContent = 'Videos';
+    } else {
+        DOM.viewTitle.textContent = isChannelView ? 'Kanäle' : 'Neue Videos';
+    }
+    
+    // Update toggle button icon and title
+    if (state.filteredChannelId) {
+        // Show back arrow when viewing channel videos
+        DOM.viewIcon.innerHTML = `
+            <polyline points="15 18 9 12 15 6"/>
+        `;
+        DOM.viewToggleBtn.classList.add('active');
+        DOM.viewToggleBtn.title = 'Zurück zu Kanälen';
+    } else if (isChannelView) {
+        // Show list/video icon when in channel view
+        DOM.viewIcon.innerHTML = `
+            <rect x="3" y="3" width="18" height="4" rx="1"/>
+            <rect x="3" y="9" width="18" height="4" rx="1"/>
+            <rect x="3" y="15" width="18" height="4" rx="1"/>
+        `;
+        DOM.viewToggleBtn.classList.add('active');
+        DOM.viewToggleBtn.title = 'Video-Ansicht';
+    } else {
+        // Show grid icon when in video view
+        DOM.viewIcon.innerHTML = `
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+        `;
+        DOM.viewToggleBtn.classList.remove('active');
+        DOM.viewToggleBtn.title = 'Kanal-Ansicht';
+    }
+    
+    // Show/hide grids
+    if (isChannelView) {
+        DOM.videoGrid.classList.add('hidden');
+        DOM.channelGrid.classList.remove('hidden');
+        renderChannelGrid();
+    } else {
+        DOM.videoGrid.classList.remove('hidden');
+        DOM.channelGrid.classList.add('hidden');
+        renderVideos();
+    }
+}
+
+function renderChannelGrid() {
+    // Get unseen videos per channel
+    const unseenByChannel = {};
+    
+    state.videos.forEach(video => {
+        if (state.seenVideos.has(video.id)) return;
+        
+        // Apply date filter
+        if (state.startDate) {
+            const videoDate = new Date(video.publishedAt).getTime();
+            const startDateTime = new Date(state.startDate).getTime();
+            if (videoDate < startDateTime) return;
+        }
+        
+        if (!unseenByChannel[video.channelId]) {
+            unseenByChannel[video.channelId] = 0;
+        }
+        unseenByChannel[video.channelId]++;
+    });
+    
+    // Filter channels that have unseen videos
+    const channelsWithVideos = state.channels.filter(c => unseenByChannel[c.id] > 0);
+    
+    // Update count
+    const totalUnseen = Object.values(unseenByChannel).reduce((a, b) => a + b, 0);
+    DOM.videoCount.textContent = totalUnseen;
+    
+    if (channelsWithVideos.length === 0) {
+        DOM.channelGrid.innerHTML = '';
+        DOM.emptyState.classList.remove('hidden');
+        DOM.emptyState.querySelector('p').textContent = 'Keine neuen Videos';
+        return;
+    }
+    
+    DOM.emptyState.classList.add('hidden');
+    
+    DOM.channelGrid.innerHTML = channelsWithVideos.map((channel, index) => {
+        const count = unseenByChannel[channel.id] || 0;
+        const initial = channel.name.charAt(0).toUpperCase();
+        
+        return `
+            <div class="channel-grid-item" onclick="showChannelVideos('${channel.id}')" style="animation-delay: ${index * 50}ms">
+                <div class="channel-grid-avatar">
+                    ${channel.thumbnail 
+                        ? `<img src="${channel.thumbnail}" alt="${escapeHtml(channel.name)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                           <div class="avatar-placeholder" style="display:none">${initial}</div>`
+                        : `<div class="avatar-placeholder">${initial}</div>`
+                    }
+                    <span class="channel-grid-badge">${count}</span>
+                </div>
+                <span class="channel-grid-name">${escapeHtml(channel.name)}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function showChannelVideos(channelId) {
+    state.filteredChannelId = channelId;
+    state.viewMode = 'videos'; // Switch to video view but filtered
+    updateView();
+}
+
+function goBackToChannels() {
+    state.filteredChannelId = null;
+    state.viewMode = 'channels';
+    updateView();
 }
 
 // ===========================
@@ -772,12 +915,48 @@ function renderVideos() {
         });
     }
     
+    // Apply channel filter if viewing a specific channel
+    if (state.filteredChannelId) {
+        filteredVideos = filteredVideos.filter(v => v.channelId === state.filteredChannelId);
+    }
+    
     // Update count (just the number)
     DOM.videoCount.textContent = filteredVideos.length;
     
+    // Show back button if filtered by channel
+    let backHeader = '';
+    if (state.filteredChannelId) {
+        const channel = state.channels.find(c => c.id === state.filteredChannelId);
+        if (channel) {
+            const initial = channel.name.charAt(0).toUpperCase();
+            backHeader = `
+                <div class="back-header">
+                    <button class="back-btn" onclick="goBackToChannels()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                        Zurück
+                    </button>
+                    <div class="back-channel-info">
+                        <div class="back-channel-avatar">
+                            ${channel.thumbnail 
+                                ? `<img src="${channel.thumbnail}" alt="${escapeHtml(channel.name)}" onerror="this.style.display='none'">`
+                                : initial
+                            }
+                        </div>
+                        <span class="back-channel-name">${escapeHtml(channel.name)}</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
     if (filteredVideos.length === 0) {
-        DOM.videoGrid.innerHTML = '';
+        DOM.videoGrid.innerHTML = backHeader;
         DOM.emptyState.classList.remove('hidden');
+        DOM.emptyState.querySelector('p').textContent = state.filteredChannelId 
+            ? 'Keine neuen Videos von diesem Kanal' 
+            : 'Keine neuen Videos';
         return;
     }
     
@@ -785,7 +964,7 @@ function renderVideos() {
     
     const unseenVideos = filteredVideos;
     
-    DOM.videoGrid.innerHTML = unseenVideos.map((video, index) => {
+    DOM.videoGrid.innerHTML = backHeader + unseenVideos.map((video, index) => {
         const publishedDate = new Date(video.publishedAt);
         const isNew = (Date.now() - publishedDate.getTime()) < 24 * 60 * 60 * 1000; // Less than 24 hours
         const relativeDate = getRelativeTime(publishedDate);
