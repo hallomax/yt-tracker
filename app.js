@@ -366,13 +366,18 @@ function renderChannelGrid() {
         const count = unseenByChannel[channel.id] || 0;
         const initial = channel.name.charAt(0).toUpperCase();
         
-        // Try to get thumbnail from channel, or fallback to video's channelThumbnail
+        // Try to get thumbnail: 1) from channel, 2) from video's channelThumbnail, 3) from first video thumbnail
         let thumbnail = channel.thumbnail;
         if (!thumbnail) {
-            const channelVideo = state.videos.find(v => v.channelId === channel.id && v.channelThumbnail);
+            const channelVideo = state.videos.find(v => v.channelId === channel.id);
             if (channelVideo) {
-                thumbnail = channelVideo.channelThumbnail;
+                thumbnail = channelVideo.channelThumbnail || channelVideo.thumbnail;
             }
+        }
+        
+        // For video thumbnails, use a smaller resolution for better circular display
+        if (thumbnail && thumbnail.includes('i.ytimg.com')) {
+            thumbnail = thumbnail.replace('hqdefault.jpg', 'default.jpg');
         }
         
         return `
