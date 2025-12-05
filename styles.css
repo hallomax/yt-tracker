@@ -123,6 +123,10 @@ body {
     height: 20px;
 }
 
+.btn-icon.refreshing svg {
+    animation: spin 1s linear infinite;
+}
+
 .btn-primary {
     display: flex;
     align-items: center;

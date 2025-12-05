@@ -119,7 +119,7 @@ function init() {
         const tenMinutes = 10 * 60 * 1000; // 10 Minuten in Millisekunden
         
         if (!lastUpdate || (now - parseInt(lastUpdate)) > tenMinutes) {
-            refreshVideos();
+            refreshVideos(true); // Silent background update
         }
     }
 }
@@ -866,15 +866,16 @@ function renderChannels() {
 // ===========================
 // Video Functions (RSS Feed based)
 // ===========================
-async function refreshVideos() {
+async function refreshVideos(silent = false) {
     if (state.channels.length === 0) {
-        showToast('Füge zuerst Kanäle hinzu', 'warning');
+        if (!silent) {
+            showToast('Füge zuerst Kanäle hinzu', 'warning');
+        }
         return;
     }
     
-    DOM.loadingState.classList.remove('hidden');
-    DOM.emptyState.classList.add('hidden');
-    DOM.videoGrid.innerHTML = '';
+    // Show rotating icon on refresh button
+    DOM.refreshBtn.classList.add('refreshing');
     
     try {
         const allVideos = [];
@@ -891,7 +892,9 @@ async function refreshVideos() {
         }
         
         if (successCount === 0) {
-            showToast('Fehler beim Laden der Videos. Versuche es später erneut.', 'error');
+            if (!silent) {
+                showToast('Fehler beim Laden der Videos. Versuche es später erneut.', 'error');
+            }
         } else {
             // Sort by date (newest first)
             allVideos.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
@@ -902,16 +905,24 @@ async function refreshVideos() {
             // Timestamp speichern
             localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
             
-            showToast(`${allVideos.length} Videos von ${successCount} Kanälen geladen`, 'success');
+            // Update view with new videos
+            renderVideos();
+            
+            // Show toast only for manual refreshes
+            if (!silent) {
+                showToast(`${allVideos.length} Videos von ${successCount} Kanälen geladen`, 'success');
+            }
         }
         
     } catch (error) {
         console.error('Error fetching videos:', error);
-        showToast('Fehler beim Laden der Videos', 'error');
+        if (!silent) {
+            showToast('Fehler beim Laden der Videos', 'error');
+        }
+    } finally {
+        // Remove rotating icon
+        DOM.refreshBtn.classList.remove('refreshing');
     }
-    
-    DOM.loadingState.classList.add('hidden');
-    renderVideos();
     
     // Update missing thumbnails in background (non-blocking)
     updateMissingThumbnails();
