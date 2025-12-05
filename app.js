@@ -17,10 +17,11 @@ const CONFIG = {
     RSS_FEED_URL: 'https://www.youtube.com/feeds/videos.xml?channel_id=',
     // Piped API Instanzen für Kanal-Suche (kein API Key nötig)
     PIPED_INSTANCES: [
-        'https://pipedapi.kavin.rocks',
-        'https://pipedapi.adminforge.de',
-        'https://watchapi.whatever.social',
-        'https://pipedapi.r4fo.com'
+        'https://api.piped.private.coffee',
+        'https://pipedapi.darkness.services',
+        'https://pipedapi.ducks.party',
+        'https://piped-api.privacy.com.de',
+        'https://pipedapi.reallyaweso.me'
     ]
 };
 
