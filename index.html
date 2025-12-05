@@ -113,6 +113,14 @@
                 </svg>
                 Kanal hinzufügen
             </button>
+            <button id="installBtn" class="btn-install hidden">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                App installieren
+            </button>
         </div>
     </aside>
 
@@ -182,8 +190,9 @@
 
     <script src="app.js"></script>
     
-    <!-- Service Worker Registration -->
+    <!-- Service Worker & PWA Install -->
     <script>
+        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -191,6 +200,43 @@
                     .catch(err => console.log('Service Worker registration failed:', err));
             });
         }
+        
+        // PWA Install Button
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('beforeinstallprompt fired!');
+            e.preventDefault();
+            deferredPrompt = e;
+            // Show install button
+            if (installBtn) {
+                installBtn.classList.remove('hidden');
+            }
+        });
+        
+        if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+                if (!deferredPrompt) {
+                    // Fallback: Show manual instructions
+                    alert('Tippe auf das Menü deines Browsers (⋮) und wähle "App installieren" oder "Zum Startbildschirm hinzufügen"');
+                    return;
+                }
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('Install outcome:', outcome);
+                deferredPrompt = null;
+                installBtn.classList.add('hidden');
+            });
+        }
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('App installed!');
+            if (installBtn) {
+                installBtn.classList.add('hidden');
+            }
+            deferredPrompt = null;
+        });
     </script>
 </body>
 </html>
