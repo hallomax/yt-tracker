@@ -106,6 +106,9 @@ function init() {
     setupEventListeners();
     renderChannels();
     updateView(); // This will render the correct view based on state.viewMode
+    
+    // Update missing thumbnails in background
+    updateMissingThumbnails();
 }
 
 function loadState() {
@@ -366,19 +369,8 @@ function renderChannelGrid() {
         const count = unseenByChannel[channel.id] || 0;
         const initial = channel.name.charAt(0).toUpperCase();
         
-        // Try to get thumbnail: 1) from channel, 2) from video's channelThumbnail, 3) from first video thumbnail
-        let thumbnail = channel.thumbnail;
-        if (!thumbnail) {
-            const channelVideo = state.videos.find(v => v.channelId === channel.id);
-            if (channelVideo) {
-                thumbnail = channelVideo.channelThumbnail || channelVideo.thumbnail;
-            }
-        }
-        
-        // For video thumbnails, use a smaller resolution for better circular display
-        if (thumbnail && thumbnail.includes('i.ytimg.com')) {
-            thumbnail = thumbnail.replace('hqdefault.jpg', 'default.jpg');
-        }
+        // Only use the actual channel thumbnail (no video thumbnail fallback)
+        const thumbnail = channel.thumbnail;
         
         return `
             <div class="channel-grid-item" onclick="showChannelVideos('${channel.id}')" style="animation-delay: ${index * 50}ms">
@@ -567,7 +559,11 @@ function extractHandle(input) {
 async function fetchChannelInfo(handle) {
     // Method 1: If it's already a channel ID (UC + 22 chars = 24 total), use it directly
     if (handle.startsWith('UC') && handle.length === 24) {
+        // Try to get channel info from Piped API first (includes thumbnail)
+        const thumbnail = await fetchChannelThumbnail(handle);
+        
         // Try to get the channel name from RSS feed
+        let channelName = handle;
         try {
             const rssUrl = CONFIG.RSS_FEED_URL + handle;
             for (const proxy of CONFIG.CORS_PROXIES) {
@@ -576,13 +572,10 @@ async function fetchChannelInfo(handle) {
                     if (response.ok) {
                         const xml = await response.text();
                         const nameMatch = xml.match(/<author><name>([^<]+)<\/name>/);
-                        const channelName = nameMatch ? nameMatch[1] : handle;
-                        return {
-                            id: handle,
-                            handle: handle,
-                            name: channelName,
-                            thumbnail: ''
-                        };
+                        if (nameMatch) {
+                            channelName = nameMatch[1];
+                        }
+                        break;
                     }
                 } catch (e) {
                     continue;
@@ -595,8 +588,8 @@ async function fetchChannelInfo(handle) {
         return {
             id: handle,
             handle: handle,
-            name: handle,
-            thumbnail: ''
+            name: channelName,
+            thumbnail: thumbnail || ''
         };
     }
     
@@ -710,6 +703,63 @@ async function fetchChannelInfo(handle) {
     // If all methods failed, show helpful error
     console.error('All API methods failed for handle:', handle);
     return null;
+}
+
+// Fetch channel thumbnail by channel ID
+async function fetchChannelThumbnail(channelId) {
+    // Try Piped API to get channel info by ID
+    for (let i = 0; i < CONFIG.PIPED_INSTANCES.length; i++) {
+        const instance = CONFIG.PIPED_INSTANCES[(state.currentPipedInstance + i) % CONFIG.PIPED_INSTANCES.length];
+        
+        try {
+            // Try to get channel by ID
+            const channelUrl = `${instance}/channel/${channelId}`;
+            const channelResponse = await fetch(channelUrl);
+            
+            if (channelResponse.ok) {
+                const channelData = await channelResponse.json();
+                if (channelData.avatarUrl) {
+                    state.currentPipedInstance = (state.currentPipedInstance + i) % CONFIG.PIPED_INSTANCES.length;
+                    return channelData.avatarUrl;
+                }
+            }
+        } catch (error) {
+            console.warn(`Piped instance ${instance} failed for thumbnail:`, error);
+            continue;
+        }
+    }
+    
+    return null;
+}
+
+// Update missing channel thumbnails
+async function updateMissingThumbnails() {
+    const channelsWithoutThumbnail = state.channels.filter(c => !c.thumbnail || c.thumbnail === '');
+    
+    if (channelsWithoutThumbnail.length === 0) return;
+    
+    let updatedCount = 0;
+    
+    for (const channel of channelsWithoutThumbnail) {
+        try {
+            const thumbnail = await fetchChannelThumbnail(channel.id);
+            if (thumbnail) {
+                channel.thumbnail = thumbnail;
+                updatedCount++;
+            }
+        } catch (error) {
+            console.warn(`Failed to fetch thumbnail for ${channel.name}:`, error);
+        }
+    }
+    
+    if (updatedCount > 0) {
+        saveState();
+        renderChannels();
+        if (state.viewMode === 'channels') {
+            renderChannelGrid();
+        }
+        console.log(`Updated ${updatedCount} channel thumbnails`);
+    }
 }
 
 // Show instructions for finding Channel ID
@@ -836,6 +886,9 @@ async function refreshVideos() {
     
     DOM.loadingState.classList.add('hidden');
     renderVideos();
+    
+    // Update missing thumbnails in background (non-blocking)
+    updateMissingThumbnails();
 }
 
 // Fetch videos using YouTube RSS Feed (no API key needed!)
