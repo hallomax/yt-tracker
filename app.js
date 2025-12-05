@@ -350,7 +350,8 @@ async function saveChannel() {
         const channelInfo = await fetchChannelInfo(handle);
         
         if (!channelInfo) {
-            showToast('Kanal nicht gefunden', 'error');
+            showToast('Kanal nicht gefunden - tippe für Hilfe', 'error');
+            setTimeout(() => showChannelIdHelp(), 1000);
             return;
         }
         
@@ -406,8 +407,33 @@ function extractHandle(input) {
 
 // Fetch channel info - tries multiple methods
 async function fetchChannelInfo(handle) {
-    // Method 1: If it's already a channel ID, use it directly
+    // Method 1: If it's already a channel ID (UC + 22 chars = 24 total), use it directly
     if (handle.startsWith('UC') && handle.length === 24) {
+        // Try to get the channel name from RSS feed
+        try {
+            const rssUrl = CONFIG.RSS_FEED_URL + handle;
+            for (const proxy of CONFIG.CORS_PROXIES) {
+                try {
+                    const response = await fetch(proxy + encodeURIComponent(rssUrl));
+                    if (response.ok) {
+                        const xml = await response.text();
+                        const nameMatch = xml.match(/<author><name>([^<]+)<\/name>/);
+                        const channelName = nameMatch ? nameMatch[1] : handle;
+                        return {
+                            id: handle,
+                            handle: handle,
+                            name: channelName,
+                            thumbnail: ''
+                        };
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+        } catch (e) {
+            console.warn('Could not fetch channel name from RSS');
+        }
+        
         return {
             id: handle,
             handle: handle,
@@ -523,7 +549,26 @@ async function fetchChannelInfo(handle) {
         console.error('Error fetching channel page:', error);
     }
     
+    // If all methods failed, show helpful error
+    console.error('All API methods failed for handle:', handle);
     return null;
+}
+
+// Show instructions for finding Channel ID
+function showChannelIdHelp() {
+    const helpText = `
+Die automatische Kanal-Suche funktioniert gerade nicht.
+
+Du kannst die Channel ID manuell eingeben:
+1. Gehe zum YouTube-Kanal
+2. Klicke auf "Über diesen Kanal" oder "Info"
+3. Klicke auf "Kanal teilen" → "Kanal-ID kopieren"
+4. Die ID beginnt mit "UC" (z.B. UCXuqSBlHAE6Xw-yeJA0Tunw)
+
+Füge diese ID im Feld ein!
+    `.trim();
+    
+    alert(helpText);
 }
 
 function editChannel(channelId) {
