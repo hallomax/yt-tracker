@@ -33,7 +33,8 @@ const STORAGE_KEYS = {
     SEEN_VIDEOS: 'yt_tracker_seen_videos',
     VIDEOS_CACHE: 'yt_tracker_videos_cache',
     START_DATE: 'yt_tracker_start_date',
-    VIEW_MODE: 'yt_tracker_view_mode'
+    VIEW_MODE: 'yt_tracker_view_mode',
+    LAST_UPDATE: 'yt_tracker_last_update'
 };
 
 // ===========================
@@ -110,6 +111,17 @@ function init() {
     
     // Update missing thumbnails in background
     updateMissingThumbnails();
+    
+    // Automatically refresh videos if last update was more than 10 minutes ago
+    if (state.channels.length > 0) {
+        const lastUpdate = localStorage.getItem(STORAGE_KEYS.LAST_UPDATE);
+        const now = Date.now();
+        const tenMinutes = 10 * 60 * 1000; // 10 Minuten in Millisekunden
+        
+        if (!lastUpdate || (now - parseInt(lastUpdate)) > tenMinutes) {
+            refreshVideos();
+        }
+    }
 }
 
 function loadState() {
@@ -886,6 +898,9 @@ async function refreshVideos() {
             
             state.videos = allVideos;
             saveState();
+            
+            // Timestamp speichern
+            localStorage.setItem(STORAGE_KEYS.LAST_UPDATE, Date.now().toString());
             
             showToast(`${allVideos.length} Videos von ${successCount} Kanälen geladen`, 'success');
         }
